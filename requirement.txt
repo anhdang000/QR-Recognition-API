@@ -1,7 +1,0 @@
-opencv-python
-Pillow
-ISA
-uvicorn
-fastapi
-python-multipart
-zxing

@@ -4,13 +4,17 @@ import numpy as np
 from fastapi import FastAPI
 from fastapi import UploadFile, File, Form
 import zxing
-from ISR.models import RDN
+from model import resolve_single
+from model.edsr import edsr
+from utils import load_image
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore")
 
 reader = zxing.BarCodeReader()
-rdn = RDN(weights='psnr-small')
+
+model = edsr(scale=4, num_res_blocks=16)
+model.load_weights('weights/edsr-16-x4/weights.h5')
 
 app = FastAPI()
 
@@ -43,8 +47,7 @@ async def read_qr(
 async def read_extracted_qr(qr_image: UploadFile = File(...)):
     img = Image.open(qr_image.file).convert('RGB')
     img = np.array(img)
-    sr_img = rdn.predict(img)
-    sr_img = Image.fromarray(sr_img)
+    sr_img = resolve_single(model, img)
     save_path = qr_image.filename.split('.')[0] + '_' + '_'.join(str(datetime.now()).split()) + '.jpg'
     sr_img.save(save_path, "JPEG", quality=80, optimize=True, progressive=True)
     qrcode = reader.decode(save_path)
