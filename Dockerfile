@@ -26,8 +26,8 @@ RUN conda env create -f environment.yml
 # Make RUN commands use the new environment
 SHELL ["conda", "run", "-n", "qr-code", "/bin/bash", "-c"]
 
-RUN wget https://martin-krasser.de/sisr/weights-wdsr-b-32-x4.tar.gz
-RUN tar xvfz weights-wdsr-b-32-x4.tar.gz
+RUN wget https://martin-krasser.de/sisr/weights-edsr-16-x4.tar.gz
+RUN tar xvfz weights-edsr-16-x4.tar.gz
 
 ENTRYPOINT ["conda", "run", "-n", "qr-code", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
 
