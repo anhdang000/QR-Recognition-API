@@ -6,7 +6,6 @@ from fastapi import UploadFile, File, Form
 import zxing
 from model import resolve_single
 from model.edsr import edsr
-from utils import load_image
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore")
