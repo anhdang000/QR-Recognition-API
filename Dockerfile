@@ -21,13 +21,9 @@ RUN apt-get install ffmpeg libsm6 libxext6  -y
 RUN apt-get install openjdk-8-jre -y
 
 # Create conda environment
-RUN conda env create -f environment.yml
+RUN pip install -r requirements.txt
 
-# Make RUN commands use the new environment
-SHELL ["conda", "run", "-n", "qr-code", "/bin/bash", "-c"]
+RUN python setup.py build_ext --inplace
 
-RUN wget https://martin-krasser.de/sisr/weights-edsr-16-x4.tar.gz
-RUN tar xvfz weights-edsr-16-x4.tar.gz
-
-ENTRYPOINT ["conda", "run", "-n", "qr-code", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+ENTRYPOINT ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
 

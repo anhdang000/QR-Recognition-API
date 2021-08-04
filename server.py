@@ -1,54 +1,52 @@
-from PIL import Image
-import cv2
-import numpy as np
+import os
+from os.path import join
+
+from resize_bicubic import bicubic
+
 from fastapi import FastAPI
 from fastapi import UploadFile, File, Form
-import zxing
-from model import resolve_single
-from model.edsr import edsr
+
+import pyzxing
+from PIL import Image
+
 from datetime import datetime
+from utils import *
+
 import warnings
 warnings.filterwarnings("ignore")
 
-reader = zxing.BarCodeReader()
-
-model = edsr(scale=4, num_res_blocks=16)
-model.load_weights('weights/edsr-16-x4/weights.h5')
+reader = pyzxing.BarCodeReader()
 
 app = FastAPI()
 
-@app.post('/read-qr')
-async def read_qr(
-    xmin: int = Form(...), ymin: int = Form(...), xmax: int = Form(...), ymax: int = Form(...), 
-    image: UploadFile = File(...)):
-    # Check file format
-    file_ext = image.filename.split('.')[-1]
-    supported_image_formats = ['bmp', 'jpg', 'jpeg', 'jp2', 'png', 'tiff', 'webp', 'xbm']
-    if file_ext not in supported_image_formats:
-        return {
-            "error": "cannot read the imported file"
-            }
-    try:
-        img = Image.open(image.file).convert('RGB')
-    except:
-        return {"error": f"file {image.filename} could not be read"}
-    
-    roi = np.array(img)[ymin: ymax, xmin:xmax]
-    roi = cv2.resize(roi, (roi.shape[1]*4, roi.shape[0]*4))
-    save_path = image.filename.split('.')[0] + '_' + '_'.join(str(datetime.now()).split()) + '.jpg'
-    cv2.imwrite(save_path, roi)
-
-    qrcode = reader.decode(save_path)
-
-    return {"result": qrcode}
+CACHE_DIR = '.cache'
 
 @app.post('/read-extracted-qr')
 async def read_extracted_qr(qr_image: UploadFile = File(...)):
-    img = Image.open(qr_image.file).convert('RGB')
-    img = np.array(img)
-    sr_img = resolve_single(model, img)
-    save_path = qr_image.filename.split('.')[0] + '_' + '_'.join(str(datetime.now()).split()) + '.jpg'
-    sr_img.save(save_path, "JPEG", quality=80, optimize=True, progressive=True)
-    qrcode = reader.decode(save_path)
+    if not os.path.isdir(CACHE_DIR):
+        os.mkdir(CACHE_DIR)
+    save_path = join(CACHE_DIR, qr_image.filename.split('.')[0] + '_' + '_'.join(str(datetime.now()).split()) + '.png')
+    await chunked_copy(qr_image, save_path)
 
-    return {"result": qrcode}
+    org_img = cv2.imread(save_path)
+    h, w = org_img.shape if len(org_img.shape) == 2 else org_img.shape[:2]
+
+    scale = 800/w
+    coeff = -1/2
+    if max(h, w) < 800:
+        img = cv2.resize(org_img, None, fx=scale, fy=scale)
+
+    img = cv2.cvtColor(org_img, cv2.COLOR_BGR2GRAY)
+    img = adjust_image_gamma_lookuptable(img, 0.6)
+    img = np.clip(img*1.7, 0, 255)
+    img = cv2.GaussianBlur(img, (5,5), 0)
+    img = img.astype(np.uint8)
+    _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    qr_result = reader.decode_array(img)[0]
+    
+    if len(qr_result) > 1:
+        return parse_result_into_fields(qr_result)
+    else:
+        img = bicubic(org_img, scale, coeff)
+        qr_result = reader.decode_array(img)[0]
+        return parse_result_into_fields(qr_result)

@@ -1,4 +1,8 @@
 __pycache__/
+build/
+.cache/
 *.jpg
 *.png
 log_file
+*.c
+*.so
