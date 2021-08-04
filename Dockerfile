@@ -20,7 +20,6 @@ RUN apt-get update
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 RUN apt-get install openjdk-8-jre -y
 
-# Create conda environment
 RUN pip install -r requirements.txt
 
 RUN python setup.py build_ext --inplace
