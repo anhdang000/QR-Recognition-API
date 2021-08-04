@@ -63,6 +63,6 @@ async def read_extracted_qr(qr_image: UploadFile = File(...)):
         return parse_result_into_fields(qr_result)
     else:
         img = bicubic(org_img, scale/2, coeff)
-        # img = bicubic(img, scale/2, coeff)
+        img = bicubic(img, scale/2, coeff)
         qr_result = reader.decode_array(img)[0]
         return parse_result_into_fields(qr_result)
