@@ -27,11 +27,9 @@ if not os.path.isdir(CACHE_DIR):
 async def read_extracted_qr(qr_image: UploadFile = File(...)):
     # Check file format
     file_ext = qr_image.filename.split('.')[-1]
-    supported_image_formats = ['bmp', 'jpg', 'jpeg', 'jp2', 'png', 'tiff', 'webp', 'xbm']
+    supported_image_formats = ['bmp', 'jpg', 'JPG', 'jpeg', 'jp2', 'png', 'tiff', 'webp', 'xbm']
     if file_ext not in supported_image_formats:
-            return {
-                "error": "invalid input"
-                }
+            return {"error": "invalid input"}
     try:
         image = Image.open(qr_image.file).convert('RGB')
         if image is None:
@@ -44,12 +42,11 @@ async def read_extracted_qr(qr_image: UploadFile = File(...)):
 
     org_img = cv2.imread(save_path)
     h, w = org_img.shape if len(org_img.shape) == 2 else org_img.shape[:2]
-
+    if h / w >= 10 or w / h >=10:
+        return {"message": "invalid input"}
     scale = 800 / w
     coeff = -1/2
-    if max(h, w) < 800:
-        img = cv2.resize(org_img, None, fx=scale, fy=scale)
-
+    img = cv2.resize(org_img, None, fx=scale, fy=scale)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = adjust_image_gamma_lookuptable(img, 0.6)
     img = np.clip(img*1.7, 0, 255)
