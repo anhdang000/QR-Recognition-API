@@ -21,11 +21,16 @@ def adjust_image_gamma_lookuptable(image, gamma=1.0):
     # apply gamma correction using the lookup table
     return cv2.LUT(image, table)
 
-def parse_result_into_fields(qr_result):
+def parse_result_into_fields(qr_result, filename):
     if len(qr_result) > 1:
         return {
+            "id": filename,
             "results": qr_result["parsed"].decode('utf-8').split('|'), 
             "status": "success"
             }
     else:
-        return {"results": None, "status": "fail"}
+        return {
+            "id": filename, 
+            "results": None, 
+            "status": "fail"
+            }
