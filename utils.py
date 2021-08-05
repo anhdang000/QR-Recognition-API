@@ -23,9 +23,11 @@ def adjust_image_gamma_lookuptable(image, gamma=1.0):
 
 def parse_result_into_fields(qr_result, filename):
     if len(qr_result) > 1:
+        result = qr_result["parsed"].decode('utf-8').split('|')
+        result = dict(zip([f'field_{i}' for i in range(len(result))], result))
         return {
             "id": filename,
-            "results": qr_result["parsed"].decode('utf-8').split('|'), 
+            "results": result, 
             "status": "success"
             }
     else:
