@@ -1,7 +1,4 @@
-fastapi
-uvicorn[standard]
-python-multipart
+flask
 Pillow
 opencv-python
 pyzxing
-Cython

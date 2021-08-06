@@ -105,13 +105,6 @@ cpdef np.ndarray bicubic(np.ndarray img, float ratio, float a):
 				# Here the dot function is used to get
 				# the dot product of 2 matrices
 				dst[j, i, c] = np.dot(np.dot(mat_l, mat_m), mat_r)
-
-	# If there is an error message, it
-	# directly goes to stderr
-	sys.stderr.write('\n')
-	
-	# Flushing the buffer
-	sys.stderr.flush()
 	return dst
 
 if __name__ == "__main__":
