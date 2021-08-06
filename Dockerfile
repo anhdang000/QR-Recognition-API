@@ -1,4 +1,4 @@
-FROM python:3.8-alpine
+FROM ubuntu:18.04
 
 ADD . /workspace
 WORKDIR /workspace
