@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM conda/miniconda3
 
 ADD . /workspace
 WORKDIR /workspace
@@ -7,6 +7,7 @@ RUN apt-get update
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 RUN apt-get install openjdk-8-jre -y
 
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
 RUN chmod +x boot.sh
