@@ -21,18 +21,24 @@ def adjust_image_gamma_lookuptable(image, gamma=1.0):
     # apply gamma correction using the lookup table
     return cv2.LUT(image, table)
 
-def parse_result_into_fields(qr_result, filename):
-    if len(qr_result) > 1:
-        result = qr_result["parsed"].decode('utf-8').split('|')
+def parse_result_into_fields(qr_zxing, qr_zbar, filename):
+    if len(qr_zxing) > 1:
+        result = qr_zxing["parsed"].decode('utf-8').split('|')
         result = dict(zip([f'field_{i}' for i in range(len(result))], result))
-        return {
+        status = "success"
+        
+    elif len(qr_zbar) > 0:
+        result = qr_zbar[0].data.decode('utf-8').split('|')
+        result = dict(zip([f'field_{i}' for i in range(len(result))], result))
+        status = "success"
+    else:
+        result = None
+        status = "fail"
+
+    res =  {
             "id": filename,
             "results": result, 
-            "status": "success"
+            "status": status
             }
-    else:
-        return {
-            "id": filename, 
-            "results": None, 
-            "status": "fail"
-            }
+
+    return res

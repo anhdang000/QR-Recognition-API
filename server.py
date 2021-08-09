@@ -1,12 +1,21 @@
+# Server
 import flask
 from flask import Response
 from flask import request
 from app import app
+
+# QR decoder
+import pyzxing
+from pyzbar import pyzbar
+
+# Image processing
+from PIL import Image
+from PIL import ImageEnhance
+
+# Utilities
 import json
 import os
 from os.path import join
-import pyzxing
-from PIL import Image
 from datetime import datetime
 from utils import *
 
@@ -54,26 +63,35 @@ def read_extracted_qr():
         if method != "raw":
             scale = 800 / w
             img = Image.fromarray(org_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
+            enhancer = ImageEnhance.Contrast(img)
+            enhancer.enhance(1.8).save('test.jpg')
             img = np.array(img)
-            qr_result = reader.decode_array(img)[0]
-            if len(qr_result) > 1:
-                response.append(parse_result_into_fields(qr_result, file.filename))
+            qr_zxing = reader.decode_array(img)[0]
+            qr_zbar = pyzbar.decode(Image.fromarray(img))
+            res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+            if res["results"] is not None:
+                response.append(res)
             else:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                img = adjust_image_gamma_lookuptable(img, 0.6)
-                for i in range(1, 6):
-                    img_i = np.clip(img*(1+i/10), 0, 255)
+                img = adjust_image_gamma_lookuptable(img, 0.4)
+                num_iter = 8
+                for i in range(1, num_iter + 1):
+                    img_i = np.clip(img*(0.9+i/20), 0, 255)
                     img_i = cv2.GaussianBlur(img_i, (5,5), 0)
                     cv2.imwrite(f'.cache/{i}.png', img_i)
                     img_i = img_i.astype(np.uint8)
                     _, img_i = cv2.threshold(img_i, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                    
-                    qr_result = reader.decode_array(img_i)[0]
-                    if len(qr_result) > 1 or i == 5:
-                        response.append(parse_result_into_fields(qr_result, file.filename))
+                    cv2.imwrite(f'.cache/{i}_bin.png', img_i)
+                    qr_zxing = reader.decode_array(img_i)[0]
+                    qr_zbar = pyzbar.decode(Image.fromarray(img_i))
+                    res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+                    if res["results"] is not None or i == num_iter:
+                        response.append(res)
                         break
         else:
-            qr_result = reader.decode_array(org_img)[0]
-            response.append(parse_result_into_fields(qr_result, file.filename))
+            qr_zxing = reader.decode_array(org_img)[0]
+            qr_zbar = pyzbar.decode(Image.fromarray(org_img))
+            res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+            response.append(res)
 
     return Response(json.dumps(response),  mimetype='application/json')

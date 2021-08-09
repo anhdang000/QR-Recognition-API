@@ -1,7 +1,7 @@
 __pycache__/
 build/
 images/
-.cache/
+.static/
 *.jpg
 *.png
 log_file
