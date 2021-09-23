@@ -77,7 +77,7 @@ def read_extracted_qr():
                     adjusted_img = apply_li_tri(save_path)
                 else:
                     adjusted_img = org_img
-                    
+
                 scale = 800 / w
                 img = Image.fromarray(adjusted_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
                 enhancer = ImageEnhance.Contrast(img)
@@ -105,5 +105,7 @@ def read_extracted_qr():
                         if res["results"] is not None or i == num_iter:
                             response.append(res)
                             break
+                if response[file.index(file)]["results"] is not None:
+                    break
 
     return Response(json.dumps(response),  mimetype='application/json')
