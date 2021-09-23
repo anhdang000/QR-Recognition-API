@@ -19,6 +19,9 @@ from os.path import join
 from datetime import datetime
 from utils import *
 
+# Filters
+from functions import *
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -60,38 +63,47 @@ def read_extracted_qr():
         if h / w >= 50 or w / h >=50 or min(h, w) < 50:
             response.append({"id": file.filename, "error": "invalid input"})
             continue
-        if method != "raw":
-            scale = 800 / w
-            img = Image.fromarray(org_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
-            enhancer = ImageEnhance.Contrast(img)
-            enhancer.enhance(1.8).save('test.jpg')
-            img = np.array(img)
-            qr_zxing = reader.decode_array(img)[0]
-            qr_zbar = pyzbar.decode(Image.fromarray(img))
-            res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
-            if res["results"] is not None:
-                response.append(res)
-            else:
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                img = adjust_image_gamma_lookuptable(img, 0.4)
-                num_iter = 8
-                for i in range(1, num_iter + 1):
-                    img_i = np.clip(img*(0.9+i/20), 0, 255)
-                    img_i = cv2.GaussianBlur(img_i, (5,5), 0)
-                    cv2.imwrite(f'.cache/{i}.png', img_i)
-                    img_i = img_i.astype(np.uint8)
-                    _, img_i = cv2.threshold(img_i, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                    cv2.imwrite(f'.cache/{i}_bin.png', img_i)
-                    qr_zxing = reader.decode_array(img_i)[0]
-                    qr_zbar = pyzbar.decode(Image.fromarray(img_i))
-                    res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
-                    if res["results"] is not None or i == num_iter:
-                        response.append(res)
-                        break
-        else:
+        if method == "raw":
             qr_zxing = reader.decode_array(org_img)[0]
             qr_zbar = pyzbar.decode(Image.fromarray(org_img))
             res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
             response.append(res)
+        else:
+            preprocess_methods = [None, 'invert_softlight', 'li_tri']
+            for preprocess_method in preprocess_methods:
+                if preprocess_method == 'invert_softlight':
+                    adjusted_img = apply_invert_softlight(save_path)
+                elif preprocess_method == 'li_tri':
+                    adjusted_img = apply_li_tri(save_path)
+                else:
+                    adjusted_img = org_img
+                    
+                scale = 800 / w
+                img = Image.fromarray(adjusted_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
+                enhancer = ImageEnhance.Contrast(img)
+                enhancer.enhance(1.8).save('test.jpg')
+                img = np.array(img)
+                qr_zxing = reader.decode_array(img)[0]
+                qr_zbar = pyzbar.decode(Image.fromarray(img))
+                res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+                if res["results"] is not None:
+                    response.append(res)
+                else:
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    img = adjust_image_gamma_lookuptable(img, 0.4)
+                    num_iter = 8
+                    for i in range(1, num_iter + 1):
+                        img_i = np.clip(img*(0.9+i/20), 0, 255)
+                        img_i = cv2.GaussianBlur(img_i, (5,5), 0)
+                        cv2.imwrite(f'.cache/{i}.png', img_i)
+                        img_i = img_i.astype(np.uint8)
+                        _, img_i = cv2.threshold(img_i, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                        cv2.imwrite(f'.cache/{i}_bin.png', img_i)
+                        qr_zxing = reader.decode_array(img_i)[0]
+                        qr_zbar = pyzbar.decode(Image.fromarray(img_i))
+                        res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+                        if res["results"] is not None or i == num_iter:
+                            response.append(res)
+                            break
 
     return Response(json.dumps(response),  mimetype='application/json')
