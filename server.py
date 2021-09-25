@@ -63,6 +63,8 @@ def read_extracted_qr():
         if h / w >= 50 or w / h >=50 or min(h, w) < 50:
             response.append({"id": file.filename, "error": "invalid input"})
             continue
+
+        qr_found = False
         if method == "raw":
             qr_zxing = reader.decode_array(org_img)[0]
             qr_zbar = pyzbar.decode(Image.fromarray(org_img))
@@ -88,6 +90,7 @@ def read_extracted_qr():
                 res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
                 if res["results"] is not None:
                     response.append(res)
+                    qr_found = True
                 else:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                     img = adjust_image_gamma_lookuptable(img, 0.4)
@@ -102,10 +105,13 @@ def read_extracted_qr():
                         qr_zxing = reader.decode_array(img_i)[0]
                         qr_zbar = pyzbar.decode(Image.fromarray(img_i))
                         res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
-                        if res["results"] is not None or i == num_iter:
+                        if res["results"] is not None:
+                            qr_found = True
                             response.append(res)
                             break
-                if response[file.index(file)]["results"] is not None:
+                if qr_found is True:
                     break
+            if qr_found is False:
+                response.append(res)
 
     return Response(json.dumps(response),  mimetype='application/json')
