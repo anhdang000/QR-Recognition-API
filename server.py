@@ -79,7 +79,8 @@ def read_extracted_qr():
                     adjusted_img = apply_li_tri(save_path)
                 else:
                     adjusted_img = org_img
-
+                adjusted_img = adjusted_img.astype(np.uint8)
+                
                 scale = 800 / w
                 img = Image.fromarray(adjusted_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
                 enhancer = ImageEnhance.Contrast(img)
