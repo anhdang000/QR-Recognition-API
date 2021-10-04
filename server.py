@@ -25,6 +25,22 @@ from functions import *
 import warnings
 warnings.filterwarnings("ignore")
 
+import logging
+
+# Config logger
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        '%(levelname)s:\t'
+        '%(asctime)s'
+        '%(filename)s:'
+        '%(funcName)s():'
+        '%(lineno)d\t'
+        '%(message)s'
+        ),
+    datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
 reader = pyzxing.BarCodeReader()
 
 CACHE_DIR = '.cache'
@@ -71,48 +87,62 @@ def read_extracted_qr():
             res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
             response.append(res)
         else:
-            preprocess_methods = [None, 'invert_softlight', 'li_tri']
+            preprocess_methods = [None, 'brightness_contrast', 'invert_softlight', 'li_tri']
             for preprocess_method in preprocess_methods:
-                if preprocess_method == 'invert_softlight':
+                if preprocess_method == 'brightness_contrast':
+                    adjusted_img = apply_brightness_contrast(save_path)
+                elif preprocess_method == 'invert_softlight':
                     adjusted_img = apply_invert_softlight(save_path)
                 elif preprocess_method == 'li_tri':
                     adjusted_img = apply_li_tri(save_path)
                 else:
                     adjusted_img = org_img
                 adjusted_img = adjusted_img.astype(np.uint8)
-                
+                logging.info(f'Applying {preprocess_method}')
+
                 scale = 800 / w
                 img = Image.fromarray(adjusted_img).resize((int(w*scale), int(h*scale)), Image.BICUBIC)
                 enhancer = ImageEnhance.Contrast(img)
                 enhancer.enhance(1.8).save('test.jpg')
                 img = np.array(img)
+
+                # Attempt 1
                 qr_zxing = reader.decode_array(img)[0]
                 qr_zbar = pyzbar.decode(Image.fromarray(img))
                 res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
                 if res["results"] is not None:
                     response.append(res)
                     qr_found = True
+                    logging.info(f'Succeed at: {preprocess_method} + rgb')
                 else:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    img = adjust_image_gamma_lookuptable(img, 0.4)
-                    num_iter = 8
-                    for i in range(1, num_iter + 1):
-                        img_i = np.clip(img*(0.9+i/20), 0, 255)
-                        img_i = cv2.GaussianBlur(img_i, (5,5), 0)
-                        cv2.imwrite(f'.cache/{i}.png', img_i)
-                        img_i = img_i.astype(np.uint8)
-                        _, img_i = cv2.threshold(img_i, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                        cv2.imwrite(f'.cache/{i}_bin.png', img_i)
-                        qr_zxing = reader.decode_array(img_i)[0]
-                        qr_zbar = pyzbar.decode(Image.fromarray(img_i))
-                        res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
-                        if res["results"] is not None:
-                            qr_found = True
-                            response.append(res)
-                            break
+                    cv2.imwrite(f'.cache/{preprocess_method}_gray.png', img)
+                    img = img.astype(np.uint8)
+                    
+                    # Attempt 2
+                    qr_zxing = reader.decode_array(img)[0]
+                    qr_zbar = pyzbar.decode(Image.fromarray(img))
+                    res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+                    if res["results"] is not None:
+                        qr_found = True
+                        response.append(res)
+                        logging.info(f'Succeed at: {preprocess_method} + gray')
+
+                    _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    cv2.imwrite(f'.cache/{preprocess_method}_bin.png', img)
+                    
+                    # Attempt 3
+                    qr_zxing = reader.decode_array(img)[0]
+                    qr_zbar = pyzbar.decode(Image.fromarray(img))
+                    res = parse_result_into_fields(qr_zxing, qr_zbar, file.filename)
+                    if res["results"] is not None:
+                        qr_found = True
+                        response.append(res)
+                        logging.info(f'Succeed at {file.filename} by: {preprocess_method} + binary')
                 if qr_found is True:
                     break
             if qr_found is False:
                 response.append(res)
+                logging.info(f'Failed at {file.filename}')
 
     return Response(json.dumps(response),  mimetype='application/json')

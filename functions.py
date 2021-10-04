@@ -24,7 +24,7 @@ def rename(file, filter):
 def apply_brightness_contrast(file):
   image = cv2.imread(cv2.samples.findFile(file))
   brightness=0
-  contrast=1.5
+  contrast=1.6
   image = cv2.convertScaleAbs(image, alpha=contrast, beta=brightness)
 
   return image
